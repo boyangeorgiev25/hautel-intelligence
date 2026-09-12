@@ -1,0 +1,21 @@
+[project]
+name = "hautel-engine"
+version = "0.1.0"
+description = "WP2 - AI matching & workflow engine PoC (Hautel Intelligence, ISS sprint)"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=1.0",
+    "pydantic>=2.7",
+    "psycopg[binary]>=3.2",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+hautel-engine = "engine.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["engine"]

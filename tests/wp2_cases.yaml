@@ -1,0 +1,162 @@
+# WP2 golden test cases — "5–10 matches with expected outcomes" per the sprint plan,
+# extended to cover the §9 uncertainties: matching quality (1), multilingual NL/FR (3),
+# orchestration robustness (4). Expected outcomes were fixed BEFORE the engine ran.
+#
+# expected.decision: match | escalate | either
+# expected.consultants: acceptable top-1 consultant ids when the decision is match
+# expected.low_confidence_ok: a match with top score < 0.5 also counts as correct
+#   (the engine flagged the gap instead of overselling)
+# overrides.candidate_filter / overrides.fail_sink: robustness scenarios
+
+consultants:
+  c0000000-0000-0000-0000-000000000001: Mira Vandenbroeck (brand strategist)
+  c0000000-0000-0000-0000-000000000002: Jonas Peeters (hotel photographer)
+  c0000000-0000-0000-0000-000000000003: Célia Fontaine (metasearch / Hotel Ads)
+  c0000000-0000-0000-0000-000000000004: Studio Klaar (web & booking UX)
+  c0000000-0000-0000-0000-000000000005: Tom Aerts (short-form video)
+  c0000000-0000-0000-0000-000000000006: Anke De Smet (CRM / email)
+  c0000000-0000-0000-0000-000000000007: Pierre Lambert (travel PR, FR)
+  c0000000-0000-0000-0000-000000000008: Nora El Amrani (multilingual SEO, local search)
+  c0000000-0000-0000-0000-000000000009: Bram Willems (videographer)
+  c0000000-0000-0000-0000-000000000010: Agence Littoral (coastal seasonal campaigns)
+
+cases:
+  # ── Uncertainty 1: matching quality over heterogeneous data (seed v1 needs) ──
+  - id: T01
+    need_id: d0000000-0000-0000-0000-000000000001
+    label: Full rebrand after renovation
+    language: en
+    kind: standard
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000001]}
+    notes: Also exercises the org sign-off rule (budget 15k+ > €5k threshold in the Northgate standards note).
+  - id: T02
+    need_id: d0000000-0000-0000-0000-000000000002
+    label: Professional photos, finally
+    language: en
+    kind: standard
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000002]}
+  - id: T03
+    need_id: d0000000-0000-0000-0000-000000000003
+    label: Reduce OTA dependence
+    language: en
+    kind: standard
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000003]}
+  - id: T04
+    need_id: d0000000-0000-0000-0000-000000000004
+    label: Website that converts
+    language: en
+    kind: standard
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000004]}
+  - id: T05
+    need_id: d0000000-0000-0000-0000-000000000005
+    label: Fill the off-season (FR-speaking audience)
+    language: en
+    kind: standard
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000010]}
+  - id: T06
+    need_id: d0000000-0000-0000-0000-000000000006
+    label: Fix our review profile
+    language: en
+    kind: vocabulary_gap
+    expected: {decision: either, consultants: [c0000000-0000-0000-0000-000000000008]}
+    notes: Local-search cleanup is Nora's; review-response work has no specialist in the pool. Match on Nora or an honest escalation are both correct.
+  - id: T07
+    need_id: d0000000-0000-0000-0000-000000000007
+    label: LinkedIn presence for MICE
+    language: en
+    kind: skill_gap
+    expected: {decision: escalate, consultants: [], low_confidence_ok: true}
+    notes: No LinkedIn/B2B specialist in the pool. The keyword baseline picks Nora (SEO) here; the engine should say the gap out loud.
+  - id: T08
+    need_id: d0000000-0000-0000-0000-000000000008
+    label: Instagram launch content
+    language: en
+    kind: standard
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000005, c0000000-0000-0000-0000-000000000009]}
+  - id: T09
+    need_id: d0000000-0000-0000-0000-000000000009
+    label: Pre-arrival email flow
+    language: en
+    kind: vocabulary_gap
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000006]}
+    notes: Baseline miss — brief says "pre-arrival flow", skill says "email marketing".
+  - id: T10
+    need_id: d0000000-0000-0000-0000-000000000010
+    label: Summer occupancy idea (open-ended)
+    language: en
+    kind: ambiguous
+    expected: {decision: either, consultants: [c0000000-0000-0000-0000-000000000010]}
+    notes: Partnerships/packages point to Agence Littoral; asking the hotel to narrow the brief is equally correct.
+  - id: T11
+    need_id: d0000000-0000-0000-0000-000000000011
+    label: Press push for ballroom relaunch (FR press)
+    language: en
+    kind: vocabulary_gap
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000007]}
+    notes: Baseline miss — "press push" vs "travel pr" / "media relations".
+  - id: T12
+    need_id: d0000000-0000-0000-0000-000000000012
+    label: Be findable in three languages
+    language: en
+    kind: vocabulary_gap
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000008]}
+    notes: Baseline miss — "findable in three languages" vs "seo" / "hreflang".
+
+  # ── Uncertainty 3: multilingual NL / FR / mixed (seed v1.1 needs) ──
+  - id: T13
+    need_id: d0000000-0000-0000-0000-000000000013
+    label: Onze website converteert niet
+    language: nl
+    kind: multilingual
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000004]}
+  - id: T14
+    need_id: d0000000-0000-0000-0000-000000000014
+    label: Instagram weer tot leven brengen
+    language: nl
+    kind: multilingual
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000005, c0000000-0000-0000-0000-000000000009]}
+  - id: T15
+    need_id: d0000000-0000-0000-0000-000000000015
+    label: Parcours e-mail avant le séjour
+    language: fr
+    kind: multilingual
+    expected: {decision: either, consultants: [c0000000-0000-0000-0000-000000000006]}
+    notes: "Anke's languages are nl/en; the brief wants FR + NL output. A match with the language gap named, or an escalation on language fit, are both defensible — the engine must at least flag it. Correction 12 Sep: decision was written as 'match' although this note already accepted both; first run (local) escalated on the French requirement with the right question for the hotel, judged FAIL under the strict reading (18/19). Expectation aligned with the note; raw first-run figure kept in the results document."
+  - id: T16
+    need_id: d0000000-0000-0000-0000-000000000016
+    label: Réduire notre dépendance aux OTA
+    language: fr
+    kind: multilingual
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000003]}
+  - id: T17
+    need_id: d0000000-0000-0000-0000-000000000017
+    label: Relance presse voor de heropening van de spa (mixed FR/NL)
+    language: mixed
+    kind: multilingual
+    expected: {decision: match, consultants: [c0000000-0000-0000-0000-000000000007]}
+    notes: French-language bio document for Pierre must be read to confirm the Flemish-press partner.
+
+  # ── Uncertainty 4: orchestration robustness ──
+  - id: T18
+    need_id: d0000000-0000-0000-0000-000000000018
+    label: Ambiguous brief ("something about marketing")
+    language: en
+    kind: ambiguous
+    expected: {decision: escalate, consultants: [], low_confidence_ok: true}
+    notes: "Expected safe behaviour: escalate with the question a human should ask; no confident match."
+  - id: T19
+    need_id: d0000000-0000-0000-0000-000000000001
+    label: Empty candidate pool
+    language: en
+    kind: empty_pool
+    overrides: {candidate_filter: {region: Luxembourg}}
+    expected: {decision: escalate, consultants: []}
+    notes: "Pool filtered to zero. Expected: escalation task created without a model call, run logged."
+  - id: T20
+    need_id: d0000000-0000-0000-0000-000000000002
+    label: Unavailable sink (task write fails)
+    language: en
+    kind: sink_failure
+    overrides: {fail_sink: true}
+    expected: {decision: rollback}
+    notes: "The task insert fails after the match insert. Expected: the whole transaction rolls back; no match, no run, no task left behind; error surfaced to the caller."
