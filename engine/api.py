@@ -468,6 +468,24 @@ def review_advice(advice_id: str, body: Review, user: dict[str, Any] = Depends(w
         return db.jsonable(dict(row))
 
 
+@app.delete("/advice/{advice_id}")
+def delete_advice(advice_id: str, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    """Remove a generated item and everything derived from it (drafts, localisations, QC evaluations). Inputs are never touched."""
+    with db.connect() as conn:
+        with conn.transaction():
+            ids = [r["id"] for r in conn.execute(
+                """with recursive tree as (
+                       select id from advice where id = %s
+                       union all
+                       select a.id from advice a join tree t on a.parent_id = t.id)
+                   select id from tree""", (advice_id,)).fetchall()]
+            if not ids:
+                raise HTTPException(404, "advice not found")
+            conn.execute("delete from evaluations where subject_id::text = any(%s)", ([str(i) for i in ids],))
+            conn.execute("delete from advice where id = any(%s)", (ids,))
+        return {"deleted": [str(i) for i in ids], "by": user.get("email")}
+
+
 @app.post("/needs/{need_id}/reset")
 def reset(need_id: str, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
     """Remove the engine's outputs for a need so it can be re-run. Inputs are never touched."""
