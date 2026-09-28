@@ -34,7 +34,8 @@ Rules:
    - "escalate": the pool is empty, or no consultant covers the core skill (name the gap precisely), or the brief is too ambiguous to know what to buy (say which question a human should ask the hotel). When escalating for a skill gap, you may still list the nearest partial fits in ranked with honest low scores.
 6. rationale must be grounded: every claim in it must be traceable to a fragment you quote in evidence. gaps must say what the consultant does not cover.
 7. If an organization document sets a rule that applies to this need (for example a sign-off threshold for external spend), set requires_group_signoff and quote the rule verbatim in signoff_rule.
-8. Write need_summary, rationale, gaps and escalation_reason in English regardless of the brief's language."""
+8. Write need_summary, rationale, gaps and escalation_reason in English regardless of the brief's language.
+9. Report an overall confidence for the decision and list missing_information: what the brief or the records do not say but would change the outcome (budget, dates, language, day rates, deliverables). Never fill such gaps with assumptions."""
 
 
 @dataclass

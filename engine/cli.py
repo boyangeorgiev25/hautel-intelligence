@@ -36,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("draft"); s.add_argument("--advice", required=True); s.add_argument("--kind", default="specialist_brief", choices=["specialist_brief","campaign_brief","content_brief","action_plan","social_draft"])
     s = sub.add_parser("localise"); s.add_argument("--source", required=True); s.add_argument("--lang", required=True, choices=["nl","fr","en"]); s.add_argument("--market", default=None)
     s = sub.add_parser("qc"); s.add_argument("--advice", required=True); s.add_argument("--no-judge", action="store_true")
+    s = sub.add_parser("wp3"); s.add_argument("--cases", default=str(REPO / "tests" / "wp3_cases.yaml")); s.add_argument("--report", default=None); s.add_argument("--only", default=None); s.add_argument("--no-model", action="store_true", help="deterministic cases only")
     s = sub.add_parser("test")
     s.add_argument("--cases", default=str(REPO / "tests" / "wp2_cases.yaml"))
     s.add_argument("--report", default=None)
@@ -86,6 +87,15 @@ def main(argv: list[str] | None = None) -> int:
             if ad.missing_information:
                 print("  missing: " + " | ".join(ad.missing_information)[:300])
         return 0
+
+    if a.cmd == "wp3":
+        import datetime as _dt
+        from .wp3_eval import run_all as wp3_run
+        report = pathlib.Path(a.report) if a.report else REPO / "docs" / "wp3" / f"wp3-run-{_dt.date.today().isoformat()}.md"
+        rs = wp3_run(pathlib.Path(a.cases), report, set(a.only.split(",")) if a.only else None, use_model=not a.no_model)
+        for r in rs: print(f"{r.case['id']:<7} {'pass' if r.ok else 'FAIL':<5} {r.actual or r.error or ''}  — {r.observation}")
+        print(f"report: {report}")
+        return 0 if all(r.ok for r in rs) else 1
 
     if a.cmd == "draft":
         from .draft import draft

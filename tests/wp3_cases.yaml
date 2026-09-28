@@ -1,0 +1,145 @@
+# WP3 test cases — one row per AI capability, in the format Anton asked for:
+# input -> expected behaviour -> actual output -> pass/fail -> observation.
+# Expectations are fixed BEFORE the run. Normal, incomplete and edge cases per capability.
+# Ids: real needs e3…01-08 (Drive material), synthetic d0…; the vague brief d0…f1 is created by the runner if absent.
+
+needs:
+  cocoon:   e3000000-0000-0000-0000-000000000007   # NL brief, FR UGC, 3-role crew
+  sapphire: e3000000-0000-0000-0000-000000000002   # EN, budget band vs quoted formats
+  ohg:      e3000000-0000-0000-0000-000000000001   # tender, escalated by WP2, IP clause
+  pandox:   e3000000-0000-0000-0000-000000000003   # EN/FR mixed, five properties
+  reviews:  d0000000-0000-0000-0000-000000000006   # synthetic, org sign-off rule at €5k
+  vague:    d0000000-0000-0000-0000-0000000000f1   # "We need to do something about marketing"
+
+cases:
+  # ── Advisor ────────────────────────────────────────────────────────────────
+  - id: ADV-01
+    capability: advisor
+    label: Full context on a rich NL brief (config C)
+    need: cocoon
+    config: C
+    expect: {sufficient: true, min_citations: 8, min_confidence: 0.6, mentions: ["French", "UGC"], missing_mentions: ["budget"]}
+  - id: ADV-02
+    capability: advisor
+    label: Same brief without hotel context (config A) — grounding delta
+    need: cocoon
+    config: A
+    expect: {citation_sources_only: ["brief"], compare_confidence_below: ADV-01}
+  - id: ADV-03
+    capability: advisor
+    label: Vague brief with hotel context — must refuse to recommend
+    need: vague
+    config: B
+    expect: {sufficient: false, max_recommendations: 0, min_missing: 3}
+  - id: ADV-04
+    capability: advisor
+    label: Vague brief, no context — must refuse to recommend
+    need: vague
+    config: A
+    expect: {sufficient: false, max_recommendations: 0}
+  - id: ADV-05
+    capability: advisor
+    label: Escalated tender — advice must carry the IP conflict as a risk
+    need: ohg
+    config: C
+    expect: {sufficient: true, risks_mention: ["IP"]}
+  - id: ADV-06
+    capability: advisor
+    label: Budget band against quoted formats
+    need: sapphire
+    config: C
+    expect: {sufficient: true, mentions_any: ["1,550", "1.550", "Essential", "2,200", "Editorial"]}
+  - id: ADV-07
+    capability: advisor
+    label: Organization rule (sign-off above €5k) must be acknowledged
+    need: reviews
+    config: B
+    expect: {sufficient: true, rule_acknowledged: true}
+
+  # ── Quality control ────────────────────────────────────────────────────────
+  - id: QC-01
+    capability: qc
+    label: Citation check on a grounded advice — all verified
+    source_case: ADV-01
+    expect: {citations_all_verified: true, deterministic_pass: true, verdict_in: [accept, revise]}
+  - id: QC-02
+    capability: qc
+    label: Tampered citation is caught (deterministic, no model)
+    source_case: ADV-01
+    tamper: inject_fake_citation
+    expect: {citations_all_verified: false, deterministic_pass: false}
+  - id: QC-03
+    capability: qc
+    label: Policy contradiction is caught (deterministic, no model)
+    source_case: ADV-03
+    tamper: add_recommendation_to_insufficient
+    expect: {policy_pass: false, deterministic_pass: false}
+  - id: QC-04
+    capability: qc
+    label: Judge flags unsupported specifics in ungrounded advice
+    source_case: ADV-02
+    expect: {min_unsupported: 1, verdict_in: [revise, reject]}
+  - id: QC-05
+    capability: qc
+    label: Judge accepts a well-grounded draft
+    source_case: DRF-01
+    expect: {citations_all_verified: true, verdict_in: [accept, revise]}
+
+  # ── Drafting ───────────────────────────────────────────────────────────────
+  - id: DRF-01
+    capability: draft
+    label: Specialist brief from grounded advice
+    source_case: ADV-01
+    kind: specialist_brief
+    expect: {hotel_specific: true, sections_between: [4, 8], min_citations: 8, open_questions_mention: ["budget"]}
+  - id: DRF-02
+    capability: draft
+    label: Social draft with ready-to-post texts
+    source_case: ADV-06
+    kind: social_draft
+    expect: {hotel_specific: true, sections_between: [3, 6]}
+  - id: DRF-03
+    capability: draft
+    label: Draft from insufficient advice — must not fabricate a hotel-specific document
+    source_case: ADV-03
+    kind: campaign_brief
+    expect: {hotel_specific: false}
+
+  # ── Localisation ───────────────────────────────────────────────────────────
+  - id: LOC-01
+    capability: localise
+    label: Specialist brief to French for Luxembourg — names and campaign title kept
+    source_case: DRF-01
+    lang: fr
+    market: Luxembourg and French-speaking Belgium
+    expect: {language: fr, body_contains: ["Cocoon"], min_glossary: 2, min_adaptations: 1}
+  - id: LOC-02
+    capability: localise
+    label: Same brief to Dutch for Flanders
+    source_case: DRF-01
+    lang: nl
+    expect: {language: nl, body_contains: ["Cocoon"], min_glossary: 2}
+  - id: LOC-03
+    capability: localise
+    label: Advice (not a draft) to Dutch
+    source_case: ADV-06
+    lang: nl
+    expect: {language: nl, body_contains: ["Sapphire"]}
+  - id: LOC-04
+    capability: localise
+    label: Edge — localise English to English (should adapt little, invent nothing)
+    source_case: DRF-01
+    lang: en
+    expect: {language: en, max_adaptations: 3}
+
+  # ── Matching (existing engine, confidence + missing information) ──────────
+  - id: MAT-01
+    capability: match
+    label: Tender escalates with missing information listed
+    need: ohg
+    expect: {decision: escalate, min_missing: 1}
+  - id: MAT-02
+    capability: match
+    label: Clear brief matches with confidence reported
+    need: pandox
+    expect: {decision: match, min_confidence: 0.5}

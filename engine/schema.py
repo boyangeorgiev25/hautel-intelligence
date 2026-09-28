@@ -30,3 +30,5 @@ class MatchDecision(BaseModel):
     ranked: list[Candidate] = Field(description="Up to 3 candidates, best first. Empty when escalating because nobody fits.")
     requires_group_signoff: bool = Field(description="True if an organization rule in the documents requires sign-off for this need.")
     signoff_rule: str | None = Field(default=None, description="The rule quoted verbatim, when requires_group_signoff is true.")
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Overall confidence in this decision: high when the brief is clear and the top candidate has concrete evidence; low when the brief is thin or the fit is partial.")
+    missing_information: list[str] = Field(default_factory=list, description="Facts absent from the brief or the records that would change the decision (budget, dates, languages, day rates, deliverables). Empty only if nothing material is missing.")
