@@ -534,6 +534,50 @@ def approve_reply(review_id: str, body: ReplyIn, user: dict[str, Any] = Depends(
             raise HTTPException(404, "review not found")
 
 
+# ── Advice list, ratings and quality (WP3 screens) ─────────────────────────────
+from . import quality as _quality  # noqa: E402
+
+
+@app.get("/organizations/{org_id}/advice")
+def org_advice(org_id: str, user: dict[str, Any] = Depends(current_user)) -> list[dict[str, Any]]:
+    """All advice for the organisation's briefs, newest first, with automatic scores and human ratings."""
+    with db.connect() as conn:
+        return db.jsonable(_quality.advice_rows(conn, org_id))
+
+
+@app.get("/advice/{advice_id}")
+def advice_detail(advice_id: str, user: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
+    with db.connect() as conn:
+        rows = _quality.advice_rows(conn, advice_id=advice_id)
+        if not rows:
+            raise HTTPException(404, "advice not found")
+        return db.jsonable(rows[0])
+
+
+class Rating(BaseModel):
+    relevance: int = Field(ge=1, le=5)
+    groundedness: int = Field(ge=1, le=5)
+    consistency: int = Field(ge=1, le=5)
+    notes: str | None = Field(default=None, max_length=4000)
+
+
+@app.post("/advice/{advice_id}/rate")
+def rate_advice(advice_id: str, body: Rating, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    """A person scores relevance, groundedness and consistency (1-5); stored in evaluations as human:<email>."""
+    with db.connect() as conn:
+        try:
+            return _quality.rate(conn, advice_id, body.model_dump(exclude={"notes"}), (body.notes or "").strip() or None, f"human:{user.get('email')}")
+        except LookupError:
+            raise HTTPException(404, "advice not found")
+
+
+@app.get("/quality")
+def quality(org_id: str | None = None, user: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
+    """Engine against the keyword baseline on the golden cases, run-to-run consistency, and advice quality."""
+    with db.connect() as conn:
+        return db.jsonable({"golden": _quality.golden_summary(conn), "r2r": _quality.run_to_run(conn, org_id), "advice": _quality.advice_quality(conn, org_id)})
+
+
 def main() -> int:
     _load_env_file(pathlib.Path.home() / ".hautel" / "engine.env")
     print(f"database: {_redact(db.database_url())} | auth: {'supabase' if AUTH_ON else 'OFF'} | cors: {_origins}", file=sys.stderr)

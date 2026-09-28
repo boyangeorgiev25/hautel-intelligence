@@ -28,6 +28,10 @@ CORS is open (demo). JSON everywhere. IDs are UUID strings. `dataset` is `synthe
 | POST | `/properties/{id}/reviews/draft` | Claude drafts a reply for a review text, grounded in the hotel profile (writer) |
 | POST | `/reviews/{id}/draft` | draft (or redraft) the reply of a stored review and keep it on the row (writer) |
 | POST | `/reviews/{id}/reply` | a person approves the reply; posted only through a configured connector (writer) |
+| GET | `/organizations/{id}/advice` | all advice for the organisation's briefs with automatic QC scores and human ratings |
+| GET | `/advice/{id}` | one advice row (structured output, QC report, ratings) |
+| POST | `/advice/{id}/rate` | `{relevance, groundedness, consistency (1-5), notes}` → three `evaluations` rows as human:<email> (writer) |
+| GET | `/quality?org_id=` | engine vs keyword baseline on the golden cases, run-to-run consistency, advice quality |
 
 ## Shapes
 
