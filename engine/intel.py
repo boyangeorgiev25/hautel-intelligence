@@ -66,7 +66,7 @@ def load_properties(conn: psycopg.Connection, org_id: str | None = None, propert
 
 def _mark(conn: psycopg.Connection, name: str, configured: bool, status: str | None = None, count: int | None = None) -> None:
     conn.execute("""insert into intel_sources (name, configured, last_run_at, last_status, last_count)
-                    values (%s, %s, case when %s is null then null else now() end, %s, %s)
+                    values (%s, %s, case when %s::text is null then null else now() end, %s::text, %s::int)
                     on conflict (name) do update set configured = excluded.configured,
                       last_run_at = coalesce(excluded.last_run_at, intel_sources.last_run_at),
                       last_status = coalesce(excluded.last_status, intel_sources.last_status),
