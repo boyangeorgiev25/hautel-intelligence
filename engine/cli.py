@@ -27,8 +27,8 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="hautel-engine", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    s = sub.add_parser("baseline"); s.add_argument("--need")
-    s = sub.add_parser("match"); s.add_argument("--need"); s.add_argument("--all", action="store_true")
+    s = sub.add_parser("baseline"); s.add_argument("--need"); s.add_argument("--dataset", choices=["synthetic", "real"], default=None, help="restrict to one dataset")
+    s = sub.add_parser("match"); s.add_argument("--need"); s.add_argument("--all", action="store_true"); s.add_argument("--dataset", choices=["synthetic", "real"], default=None, help="with --all: only needs of this dataset")
     s = sub.add_parser("show"); s.add_argument("--need", required=True)
     s = sub.add_parser("reset"); s.add_argument("--need"); s.add_argument("--all", action="store_true")
     s = sub.add_parser("test")
@@ -43,7 +43,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if a.cmd == "baseline":
         with db.connect() as conn:
-            ids = [a.need] if a.need else [str(r["id"]) for r in conn.execute("select id from marketing_needs order by id")]
+            if a.need:
+                ids = [a.need]
+            elif a.dataset:
+                ids = [str(r["id"]) for r in conn.execute("select id from marketing_needs where dataset = %s order by id", (a.dataset,))]
+            else:
+                ids = [str(r["id"]) for r in conn.execute("select id from marketing_needs order by id")]
             print(f"{'need':<38} {'title':<42} {'baseline pick':<22} hits  words")
             for nid in ids:
                 title = conn.execute("select title from marketing_needs where id=%s", (nid,)).fetchone()["title"]
@@ -53,9 +58,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if a.cmd == "match":
         with db.connect() as conn:
-            ids = [a.need] if a.need else (db.list_open_needs(conn) if a.all else [])
+            ids = [a.need] if a.need else (db.list_open_needs(conn, a.dataset) if a.all else [])
             if not ids:
-                p.error("match needs --need ID or --all")
+                p.error("match needs --need ID or --all [--dataset real]")
             for nid in ids:
                 out = run_need(conn, nid)
                 top = f"{out.top_consultant_name} ({out.top_score:.2f})" if out.top_consultant_id else "—"

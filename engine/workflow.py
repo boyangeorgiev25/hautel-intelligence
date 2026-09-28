@@ -57,6 +57,9 @@ def run_need(
     client=None,
 ) -> RunOutcome:
     need = db.load_need(conn, need_id)
+    # The pool is always scoped to the need's dataset: synthetic needs see the synthetic
+    # roster (golden cases stay reproducible), real needs see the real roster.
+    candidate_filter = {"dataset": need.dataset, **(candidate_filter or {})}
     pool = db.load_pool(conn, candidate_filter)
     pool_ids = {c.id for c in pool}
 

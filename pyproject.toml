@@ -8,10 +8,13 @@ dependencies = [
     "pydantic>=2.7",
     "psycopg[binary]>=3.2",
     "pyyaml>=6.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
 ]
 
 [project.scripts]
 hautel-engine = "engine.cli:main"
+hautel-api = "engine.api:main"
 
 [build-system]
 requires = ["hatchling"]

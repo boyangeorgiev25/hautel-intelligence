@@ -38,6 +38,7 @@ class Need:
     urgency: str
     budget_band: str | None
     status: str
+    dataset: str
     profile: dict[str, Any] | None
     property_documents: list[dict[str, Any]] = field(default_factory=list)
     org_documents: list[dict[str, Any]] = field(default_factory=list)
@@ -92,6 +93,7 @@ def load_need(conn: psycopg.Connection, need_id: str) -> Need:
         urgency=row["urgency"],
         budget_band=row["budget_band"],
         status=row["status"],
+        dataset=row["dataset"],
         profile=row["profile"],
         property_documents=[_doc(d) for d in docs if d["property_id"]],
         org_documents=[_doc(d) for d in docs if not d["property_id"]],
@@ -99,10 +101,11 @@ def load_need(conn: psycopg.Connection, need_id: str) -> Need:
 
 
 def load_pool(conn: psycopg.Connection, candidate_filter: dict[str, Any] | None = None) -> list[Consultant]:
-    """The consultant pool. `candidate_filter` narrows it (used by the empty-pool test)."""
+    """The consultant pool. `candidate_filter` narrows it: `dataset` (synthetic|real, set by
+    run_need from the need itself), and region/kind/day_rate_band for the robustness cases."""
     where, params = ["true"], []
     for key, value in (candidate_filter or {}).items():
-        if key not in {"region", "kind", "day_rate_band"}:
+        if key not in {"dataset", "region", "kind", "day_rate_band"}:
             raise ValueError(f"unsupported candidate filter: {key}")
         where.append(f"c.{key} = %s")
         params.append(value)
@@ -141,7 +144,9 @@ def marketing_lead(conn: psycopg.Connection, org_id: str) -> dict[str, Any] | No
     ).fetchone()
 
 
-def list_open_needs(conn: psycopg.Connection) -> list[str]:
+def list_open_needs(conn: psycopg.Connection, dataset: str | None = None) -> list[str]:
+    if dataset:
+        return [str(r["id"]) for r in conn.execute("select id from marketing_needs where status = 'open' and dataset = %s order by id", (dataset,))]
     return [str(r["id"]) for r in conn.execute("select id from marketing_needs where status = 'open' order by id")]
 
 

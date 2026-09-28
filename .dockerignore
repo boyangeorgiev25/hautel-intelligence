@@ -1,0 +1,7 @@
+.venv
+.git
+docs
+db
+scripts
+supabase
+**/__pycache__

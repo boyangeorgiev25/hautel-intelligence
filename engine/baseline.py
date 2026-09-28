@@ -26,7 +26,7 @@ def baseline_pick(conn: psycopg.Connection, need_id: str) -> BaselinePick:
     row = conn.execute(
         """
         with need as (
-          select lower(title || ' ' || description) as txt from marketing_needs where id = %s
+          select lower(title || ' ' || description) as txt, dataset from marketing_needs where id = %s
         ),
         words as (
           select e.consultant_id, w
@@ -36,7 +36,7 @@ def baseline_pick(conn: psycopg.Connection, need_id: str) -> BaselinePick:
         )
         select c.id, c.full_name, count(distinct w) as hits, array_agg(distinct w) as matched
           from words join need on need.txt like '%%' || w || '%%'
-          join consultants c on c.id = words.consultant_id
+          join consultants c on c.id = words.consultant_id and c.dataset = need.dataset
          group by c.id, c.full_name
          order by hits desc, c.full_name
          limit 1
