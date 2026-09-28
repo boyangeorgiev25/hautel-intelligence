@@ -22,7 +22,7 @@ from typing import Any
 
 import anthropic
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -341,56 +341,85 @@ from .advice import advise as _advise  # noqa: E402
 from .qc import run_qc as _run_qc  # noqa: E402
 
 
-@app.post("/needs/{need_id}/advise")
-def advise_need(need_id: str, config: str = Query("C", pattern="^[ABC]$"), qc: bool = True, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
-    """Generate advice for a need under one configuration (A = brief only, B = + hotel context, C = + WP2 match), then run QC on it."""
+def _placeholder(conn, need_id: str, kind: str, config: str, parent_id: str | None, language: str | None, label: str) -> str:
+    """A visible 'generating' row so the app can poll; removed when the real row is written."""
+    prop = conn.execute("select property_id from marketing_needs where id = %s", (need_id,)).fetchone()
+    if not prop:
+        raise HTTPException(404, "need not found")
+    with conn.transaction():
+        row = conn.execute("""insert into advice (property_id, need_id, body, grounding, model_ref, kind, config, parent_id, language, status, review_note)
+                              values (%s, %s, %s, '[]', 'pending', %s, %s, %s, %s, 'draft', %s) returning id""",
+                           (prop["property_id"], need_id, f"Generating {label}…", kind, config, parent_id, language, label)).fetchone()
+    return str(row["id"])
+
+
+def _job(placeholder_id: str | None, fn) -> None:
+    """Runs a generation in the background; a failure turns the placeholder into a rejected row carrying the error."""
+    try:
+        with db.connect() as conn:
+            fn(conn)
+            if placeholder_id:
+                with conn.transaction():
+                    conn.execute("delete from advice where id = %s and model_ref = 'pending'", (placeholder_id,))
+    except Exception as e:  # noqa: BLE001
+        if placeholder_id:
+            with db.connect() as conn, conn.transaction():
+                conn.execute("update advice set model_ref = 'engine:failed', status = 'rejected', body = %s, review_note = 'failed' where id = %s",
+                             (f"Generation failed: {str(e)[:400]}", placeholder_id))
+
+
+@app.post("/needs/{need_id}/advise", status_code=202)
+def advise_need(need_id: str, background: BackgroundTasks, config: str = Query("C", pattern="^[ABC]$"), qc: bool = True, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    """Queue advice generation (A = brief only, B = + hotel context, C = + WP2 match), then QC. Poll GET /needs/{id}/advice."""
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise HTTPException(503, "ANTHROPIC_API_KEY not configured on the API host")
-    client = anthropic.Anthropic()
     with db.connect() as conn:
-        try:
-            res = _advise(conn, need_id, config, client=client)  # type: ignore[arg-type]
-        except LookupError:
-            raise HTTPException(404, "need not found")
-        out: dict[str, Any] = {"advice_id": res.advice_id, "config": config, "failure": res.failure,
-                               "latency_ms": res.latency_ms, "input_tokens": res.input_tokens, "output_tokens": res.output_tokens}
+        ph = _placeholder(conn, need_id, "advice", config, None, "en", f"advice (config {config})")
+    def work(conn):
+        client = anthropic.Anthropic()
+        res = _advise(conn, need_id, config, client=client)  # type: ignore[arg-type]
         if res.advice is not None and qc:
-            out["qc"] = _run_qc(conn, res.advice_id, client=client)
-        return db.jsonable(out)
+            _run_qc(conn, res.advice_id, client=client)
+    background.add_task(_job, ph, work)
+    return {"queued": True, "placeholder_id": ph, "need_id": need_id, "config": config}
 
 
-@app.post("/advice/{advice_id}/draft")
-def draft_from_advice(advice_id: str, kind: str = Query("specialist_brief", pattern="^(specialist_brief|campaign_brief|content_brief|action_plan|social_draft)$"), qc: bool = True, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+@app.post("/advice/{advice_id}/draft", status_code=202)
+def draft_from_advice(advice_id: str, background: BackgroundTasks, kind: str = Query("specialist_brief", pattern="^(specialist_brief|campaign_brief|content_brief|action_plan|social_draft)$"), qc: bool = True, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
     from .draft import draft as _draft
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise HTTPException(503, "ANTHROPIC_API_KEY not configured on the API host")
-    client = anthropic.Anthropic()
     with db.connect() as conn:
-        try:
-            res = _draft(conn, advice_id, kind, client=client)  # type: ignore[arg-type]
-        except LookupError:
+        src = conn.execute("select need_id, config from advice where id = %s and kind = 'advice'", (advice_id,)).fetchone()
+        if not src:
             raise HTTPException(404, "advice not found")
-        out: dict[str, Any] = {"draft_id": res.id, "kind": kind, "failure": res.failure, "latency_ms": res.latency_ms, "input_tokens": res.input_tokens, "output_tokens": res.output_tokens}
-        if res.output is not None and qc:
-            out["qc"] = _run_qc(conn, res.id, client=client)
-        return db.jsonable(out)
+        ph = _placeholder(conn, str(src["need_id"]), "draft", src["config"], advice_id, "en", f"draft ({kind.replace('_', ' ')})")
+    def work(conn):
+        client = anthropic.Anthropic()
+        res = _draft(conn, advice_id, kind, client=client)  # type: ignore[arg-type]
+        if res.output is not None and qc and res.model_ref.startswith("claude"):
+            _run_qc(conn, res.id, client=client)
+    background.add_task(_job, ph, work)
+    return {"queued": True, "placeholder_id": ph, "kind": kind}
 
 
-@app.post("/advice/{source_id}/localise")
-def localise_output(source_id: str, lang: str = Query(..., pattern="^(nl|fr|en)$"), market: str | None = None, qc: bool = True, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+@app.post("/advice/{source_id}/localise", status_code=202)
+def localise_output(source_id: str, background: BackgroundTasks, lang: str = Query(..., pattern="^(nl|fr|en)$"), market: str | None = None, qc: bool = True, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
     from .draft import localise as _localise
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise HTTPException(503, "ANTHROPIC_API_KEY not configured on the API host")
-    client = anthropic.Anthropic()
     with db.connect() as conn:
-        try:
-            res = _localise(conn, source_id, lang, market, client=client)  # type: ignore[arg-type]
-        except LookupError:
+        src = conn.execute("select need_id, config from advice where id = %s and kind in ('advice','draft')", (source_id,)).fetchone()
+        if not src:
             raise HTTPException(404, "source not found")
-        out: dict[str, Any] = {"localisation_id": res.id, "language": lang, "failure": res.failure, "latency_ms": res.latency_ms, "input_tokens": res.input_tokens, "output_tokens": res.output_tokens}
+        ph = _placeholder(conn, str(src["need_id"]), "localisation", src["config"], source_id, lang, f"localisation ({lang.upper()})")
+    def work(conn):
+        client = anthropic.Anthropic()
+        res = _localise(conn, source_id, lang, market, client=client)  # type: ignore[arg-type]
         if res.output is not None and qc:
-            out["qc"] = _run_qc(conn, res.id, client=client)
-        return db.jsonable(out)
+            _run_qc(conn, res.id, client=client)
+    background.add_task(_job, ph, work)
+    return {"queued": True, "placeholder_id": ph, "language": lang}
 
 
 @app.get("/needs/{need_id}/advice")
@@ -403,15 +432,17 @@ def list_advice(need_id: str, user: dict[str, Any] = Depends(current_user)) -> l
              where a.need_id = %s order by a.created_at desc""", (need_id,))
 
 
-@app.post("/advice/{advice_id}/qc")
-def qc_advice(advice_id: str, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+@app.post("/advice/{advice_id}/qc", status_code=202)
+def qc_advice(advice_id: str, background: BackgroundTasks, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise HTTPException(503, "ANTHROPIC_API_KEY not configured on the API host")
     with db.connect() as conn:
-        try:
-            return db.jsonable(_run_qc(conn, advice_id, client=anthropic.Anthropic()))
-        except LookupError:
-            raise HTTPException(404, "advice not found")
+        if not conn.execute("select 1 from advice where id = %s and structured is not null", (advice_id,)).fetchone():
+            raise HTTPException(404, "advice not found or has no structured output")
+    def work(conn):
+        _run_qc(conn, advice_id, client=anthropic.Anthropic())
+    background.add_task(_job, None, work)
+    return {"queued": True, "advice_id": advice_id}
 
 
 class Review(BaseModel):
