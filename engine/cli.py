@@ -35,6 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("advice"); s.add_argument("--need", required=True)
     s = sub.add_parser("draft"); s.add_argument("--advice", required=True); s.add_argument("--kind", default="specialist_brief", choices=["specialist_brief","campaign_brief","content_brief","action_plan","social_draft"])
     s = sub.add_parser("localise"); s.add_argument("--source", required=True); s.add_argument("--lang", required=True, choices=["nl","fr","en"]); s.add_argument("--market", default=None)
+    s = sub.add_parser("consistency"); s.add_argument("--need", required=True); s.add_argument("--config", default="C")
     s = sub.add_parser("qc"); s.add_argument("--advice", required=True); s.add_argument("--no-judge", action="store_true")
     s = sub.add_parser("wp3"); s.add_argument("--cases", default=str(REPO / "tests" / "wp3_cases.yaml")); s.add_argument("--report", default=None); s.add_argument("--only", default=None); s.add_argument("--no-model", action="store_true", help="deterministic cases only")
     s = sub.add_parser("test")
@@ -120,6 +121,16 @@ def main(argv: list[str] | None = None) -> int:
             print("  " + l.body[:400].replace("\n", " "))
             for g in l.glossary_applied[:4]: print(f"  glossary: {g[:120]}")
             for x in l.adaptations[:3]: print(f"  adapted: {x[:140]}")
+        return 0
+
+    if a.cmd == "consistency":
+        from .consistency import score
+        with db.connect() as conn:
+            r = score(conn, a.need, a.config)
+            if "consistency" not in r:
+                print(r); return 1
+            print(f"need {a.need} config {a.config}: {r['runs']} runs, consistency={r['consistency']}  same_decision={r['same_sufficient_share']:.2f} max_conf_delta={r['max_confidence_delta']} channels={r['mean_channels_jaccard']} sources={r['mean_sources_jaccard']} assets={r['mean_assets_overlap']} actions={r['mean_actions_overlap']}")
+            for p in r["pairs"]: print("  ", p)
         return 0
 
     if a.cmd == "qc":
