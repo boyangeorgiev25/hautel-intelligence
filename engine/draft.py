@@ -28,7 +28,7 @@ Lang = Literal["nl", "fr", "en"]
 
 class Section(BaseModel):
     heading: str
-    content: str = Field(description="The section text, ready to use. Concrete: names, dates, channels, deliverables from the context.")
+    content: str = Field(description="The section text, ready to use, at most 120 words; bullet lines where they read faster. Concrete: names, dates, channels, deliverables from the context.")
     citations: list[Citation] = Field(description="Context fragments this section rests on.")
 
 
@@ -36,9 +36,9 @@ class Draft(BaseModel):
     document_kind: DraftKind
     title: str
     addressed_to: str = Field(description="Who receives this document (the matched consultant, the hotel's marketing lead, the social team ...).")
-    sections: list[Section] = Field(description="Four to eight sections. For a social draft: one section per post with the copy itself.")
+    sections: list[Section] = Field(description="Four to six sections; a social draft has three to five, one per post with the copy itself (at most 60 words per post).")
     assets_needed: list[str]
-    open_questions: list[str] = Field(description="What the recipient must confirm before starting; never fill these with assumptions.")
+    open_questions: list[str] = Field(description="What the recipient must confirm before starting, at most 5 short lines; never fill these with assumptions.")
     hotel_specific: bool = Field(description="False if the document could be sent to any hotel; true when it uses this hotel's context.")
 
 
@@ -46,8 +46,8 @@ class Localisation(BaseModel):
     language: Lang
     title: str
     body: str = Field(description="The full localised document, same structure as the source, in the target language.")
-    glossary_applied: list[str] = Field(description="Hotel or brand terms kept or rendered deliberately (names, outlet names, claims, campaign titles) and how.")
-    adaptations: list[str] = Field(description="Changes beyond translation: audience, market conventions, formality, examples, units, dates. Each with the reason.")
+    glossary_applied: list[str] = Field(description="Hotel or brand terms kept or rendered deliberately, at most 8, one line each.")
+    adaptations: list[str] = Field(description="Changes beyond translation, at most 6, one line each with the reason.")
     uncertain: list[str] = Field(description="Terms or passages where the right rendering depends on a decision the hotel must take.")
 
 
@@ -58,7 +58,8 @@ Rules:
 2. A document that could be sent to any hotel is a failure; if the context is too thin to make it hotel-specific, say so in open_questions and set hotel_specific to false.
 3. Respect organization rules found in the documents (sign-off, IP, brand guidelines).
 4. Write in English; localisation is a separate step. Keep hotel and brand names exactly as in the context.
-5. Kinds: specialist_brief = the brief a consultant receives to start work (scope, deliverables, constraints, timing, inputs); campaign_brief = objective, audience, message, channels, timing, KPIs; content_brief = shot list / content plan with formats and channels; action_plan = week-by-week actions with owners; social_draft = three to five ready-to-post texts with channel and asset note."""
+5. Keep the whole document under 700 words; a reader should get it in three minutes.
+6. Kinds: specialist_brief = the brief a consultant receives to start work (scope, deliverables, constraints, timing, inputs); campaign_brief = objective, audience, message, channels, timing, KPIs; content_brief = shot list / content plan with formats and channels; action_plan = week-by-week actions with owners; social_draft = three to five ready-to-post texts with channel and asset note."""
 
 LOCALISE_PROMPT = """You are the localisation step of the Hautel Intelligence platform. You receive a SOURCE document (English) with the REQUEST and HOTEL context, and a TARGET language and market. Produce the document in the target language for that market.
 

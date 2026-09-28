@@ -29,22 +29,22 @@ class Citation(BaseModel):
 
 
 class Recommendation(BaseModel):
-    action: str = Field(description="One concrete recommendation, in one or two sentences.")
-    why: str = Field(description="Why this follows from the hotel's situation and the request.")
+    action: str = Field(description="One concrete recommendation in one sentence, at most 25 words.")
+    why: str = Field(description="Why it follows from the hotel's situation and the request, one sentence, at most 30 words.")
     channels: list[str] = Field(description="Channels or touchpoints this uses (instagram, OTA listing, LinkedIn, email, website, PR ...).")
     citations: list[Citation] = Field(description="Context fragments this recommendation rests on. Empty means it is a general best practice, not hotel-specific.")
 
 
 class Advice(BaseModel):
-    interpreted_objective: str = Field(description="What the hotel is actually trying to achieve, in one sentence.")
+    interpreted_objective: str = Field(description="What the hotel is actually trying to achieve, one sentence, at most 30 words.")
     sufficient_information: bool = Field(description="False when the context does not allow a hotel-specific recommendation; then recommendations stay empty and missing_information says what to ask.")
-    missing_information: list[str] = Field(description="Facts that are missing or ambiguous and would change the recommendation. Empty only if nothing material is missing.")
-    target_audience: str = Field(description="Who the marketing should reach, grounded in the hotel profile when available.")
-    recommended_approach: str = Field(description="The strategy in a short paragraph.")
-    recommendations: list[Recommendation] = Field(description="Three to five concrete recommendations, best first. Empty when sufficient_information is false.")
-    required_assets: list[str] = Field(description="Content or assets that must exist or be produced (photos, reels, copy in which language, landing page ...).")
-    next_actions: list[str] = Field(description="Immediate next steps for the hotel and, when a consultant is matched, for that consultant.")
-    risks: list[str] = Field(description="What could go wrong or conflict with the hotel's rules and documents.")
+    missing_information: list[str] = Field(description="The facts that are missing and would change the recommendation, most important first, at most 5, each one short line. Empty only if nothing material is missing.")
+    target_audience: str = Field(description="Who the marketing should reach, one sentence, grounded in the hotel profile when available.")
+    recommended_approach: str = Field(description="The strategy in two or three sentences, at most 60 words.")
+    recommendations: list[Recommendation] = Field(description="Three to five concrete recommendations, best first, never more than five. Empty when sufficient_information is false.")
+    required_assets: list[str] = Field(description="Content or assets that must exist or be produced, at most 6 short items.")
+    next_actions: list[str] = Field(description="Immediate next steps, at most 5, each one short line naming who does it.")
+    risks: list[str] = Field(description="What could go wrong or conflict with the hotel's rules and documents, at most 4, one line each.")
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence that this advice fits this hotel; low when the context is thin.")
     language_of_request: Literal["nl", "fr", "en", "de", "mixed", "other"]
 
@@ -60,7 +60,8 @@ Rules:
 4. Respect organization rules found in the documents (sign-off thresholds, IP clauses, brand rules) and surface conflicts in risks.
 5. When a MATCH is provided, build on it: the consultant's gaps become required_assets or next_actions for someone else, not silent assumptions.
 6. Keep it commercial and specific: what to do, on which channel, for whom, with which assets. Hospitality marketing is the domain: OTA visibility, direct bookings, social content, MICE, F&B, employer branding, seasonal campaigns.
-7. Detect the language of the request and report it. Write the advice in English regardless of the request's language; localisation is a separate step."""
+7. Detect the language of the request and report it. Write the advice in English regardless of the request's language; localisation is a separate step.
+8. Be brief. A marketing lead reads this on a phone: one sentence per field where the contract says so, at most five recommendations, no repetition between fields. Depth goes into the citations, not into prose."""
 
 
 @dataclass
