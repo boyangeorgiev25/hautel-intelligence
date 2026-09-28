@@ -33,6 +33,8 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("reset"); s.add_argument("--need"); s.add_argument("--all", action="store_true")
     s = sub.add_parser("advise"); s.add_argument("--need", required=True); s.add_argument("--config", choices=["A", "B", "C"], default="C")
     s = sub.add_parser("advice"); s.add_argument("--need", required=True)
+    s = sub.add_parser("draft"); s.add_argument("--advice", required=True); s.add_argument("--kind", default="specialist_brief", choices=["specialist_brief","campaign_brief","content_brief","action_plan","social_draft"])
+    s = sub.add_parser("localise"); s.add_argument("--source", required=True); s.add_argument("--lang", required=True, choices=["nl","fr","en"]); s.add_argument("--market", default=None)
     s = sub.add_parser("qc"); s.add_argument("--advice", required=True); s.add_argument("--no-judge", action="store_true")
     s = sub.add_parser("test")
     s.add_argument("--cases", default=str(REPO / "tests" / "wp2_cases.yaml"))
@@ -83,6 +85,31 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {i}. {r.action[:110]}  [{len(r.citations)} citations]")
             if ad.missing_information:
                 print("  missing: " + " | ".join(ad.missing_information)[:300])
+        return 0
+
+    if a.cmd == "draft":
+        from .draft import draft
+        with db.connect() as conn:
+            res = draft(conn, a.advice, a.kind)
+            if res.output is None:
+                print(f"FAILED: {res.failure}"); return 1
+            d = res.output
+            print(f"draft={res.id}  kind={d.document_kind}  to={d.addressed_to}  sections={len(d.sections)}  hotel_specific={d.hotel_specific}  {res.latency_ms/1000:.1f}s  tokens {res.input_tokens}/{res.output_tokens}")
+            for sec in d.sections: print(f"  ## {sec.heading}  [{len(sec.citations)} citations]")
+            if d.open_questions: print("  open: " + " | ".join(d.open_questions)[:300])
+        return 0
+
+    if a.cmd == "localise":
+        from .draft import localise
+        with db.connect() as conn:
+            res = localise(conn, a.source, a.lang, a.market)
+            if res.output is None:
+                print(f"FAILED: {res.failure}"); return 1
+            l = res.output
+            print(f"localisation={res.id}  lang={l.language}  glossary={len(l.glossary_applied)}  adaptations={len(l.adaptations)}  uncertain={len(l.uncertain)}  {res.latency_ms/1000:.1f}s  tokens {res.input_tokens}/{res.output_tokens}")
+            print("  " + l.body[:400].replace("\n", " "))
+            for g in l.glossary_applied[:4]: print(f"  glossary: {g[:120]}")
+            for x in l.adaptations[:3]: print(f"  adapted: {x[:140]}")
         return 0
 
     if a.cmd == "qc":

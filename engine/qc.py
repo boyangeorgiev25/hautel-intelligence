@@ -30,11 +30,18 @@ def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s.replace("’", "'").replace("“", '"').replace("”", '"')).strip().lower()
 
 
+def _citations(structured: dict[str, Any]) -> list[dict[str, Any]]:
+    out = []
+    for r in structured.get("recommendations", []) + structured.get("sections", []):
+        out += r.get("citations", [])
+    return out
+
+
 def citation_check(structured: dict[str, Any], context: str) -> dict[str, Any]:
     ctx = _norm(context)
     total, found, missing = 0, 0, []
-    for r in structured.get("recommendations", []):
-        for c in r.get("citations", []):
+    for c in _citations(structured):
+        if True:
             total += 1
             q = _norm(c.get("quote", ""))
             if q and q in ctx:
@@ -46,6 +53,9 @@ def citation_check(structured: dict[str, Any], context: str) -> dict[str, Any]:
 
 
 def policy_check(structured: dict[str, Any]) -> dict[str, Any]:
+    if "sufficient_information" not in structured:   # drafts and localisations
+        generic = [] if structured.get("hotel_specific", True) else ["document is not hotel-specific"]
+        return {"pass": not generic, "problems": generic, "generic_recommendations": []}
     suff = structured.get("sufficient_information")
     recs = structured.get("recommendations", [])
     problems = []
@@ -91,20 +101,21 @@ class QCJudgement(BaseModel):
     summary: str = Field(description="Two sentences for the human reviewer.")
 
 
-JUDGE_PROMPT = """You are the quality-control step of the Hautel Intelligence platform. You receive the CONTEXT a marketing advisor saw (request, hotel, organization documents, match) and the ADVICE it produced. Judge the advice strictly against that context.
+JUDGE_PROMPT = """You are the quality-control step of the Hautel Intelligence platform. You receive the CONTEXT the generator saw (request, hotel, organization documents, match), possibly a SOURCE document the output was derived from (the advice a draft is based on, or the document a localisation translates), and the OUTPUT (advice, draft or localisation). Judge the output strictly against the context and, when present, the source: a draft must follow the advice it came from; a localisation must preserve the source's objective, audience, facts, hotel terminology and structure in the target language.
 
 The advisor writes its advice in English by design, whatever the language of the request; localisation is a separate step. So language_consistency judges terminology, audience and market fit against the request and hotel context, not the output language.
 
 Score each criterion from 0 to 1. List every hotel-specific claim that the context does not support (numbers, competitors, past results, facilities, people). Propose concrete corrections. Verdict: accept = a human can approve with at most cosmetic edits; revise = usable after the listed corrections; reject = misreads the request or invents material facts. Be terse and specific."""
 
 
-def judge(context: str, structured: dict[str, Any], client: anthropic.Anthropic | None = None) -> tuple[QCJudgement | None, dict[str, Any]]:
+def judge(context: str, structured: dict[str, Any], client: anthropic.Anthropic | None = None, source: str | None = None, kind: str = "advice") -> tuple[QCJudgement | None, dict[str, Any]]:
     client = client or anthropic.Anthropic()
     t0 = time.perf_counter()
+    user = "CONTEXT:\n" + context + ("\n\nSOURCE:\n" + source if source else "") + f"\n\nOUTPUT ({kind}):\n" + json.dumps(structured, ensure_ascii=False, indent=1)
     response = client.messages.parse(
         model=MODEL, max_tokens=6000,
         system=[{"type": "text", "text": JUDGE_PROMPT, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": "CONTEXT:\n" + context + "\n\nADVICE:\n" + json.dumps(structured, ensure_ascii=False, indent=1)}],
+        messages=[{"role": "user", "content": user}],
         output_format=QCJudgement,
     )
     meta = {"model_ref": response.model, "latency_ms": int((time.perf_counter() - t0) * 1000),
@@ -113,7 +124,7 @@ def judge(context: str, structured: dict[str, Any], client: anthropic.Anthropic 
 
 
 def run_qc(conn: psycopg.Connection, advice_id: str, client: anthropic.Anthropic | None = None, with_judge: bool = True) -> dict[str, Any]:
-    row = conn.execute("select id, need_id, config, structured, status, run_id from advice where id = %s", (advice_id,)).fetchone()
+    row = conn.execute("select id, kind, need_id, config, structured, status, run_id, parent_id from advice where id = %s", (advice_id,)).fetchone()
     if not row:
         raise LookupError("advice not found")
     if not row["structured"]:
@@ -129,7 +140,11 @@ def run_qc(conn: psycopg.Connection, advice_id: str, client: anthropic.Anthropic
     }
     deterministic_pass = all(report[k]["pass"] for k in ("citation_check", "policy_check", "rule_scan"))
     if with_judge:
-        j, meta = judge(context, s, client=client)
+        source = None
+        if row["parent_id"]:
+            src = conn.execute("select body from advice where id = %s", (row["parent_id"],)).fetchone()
+            source = src["body"] if src else None
+        j, meta = judge(context, s, client=client, source=source, kind=row["kind"])
         report["judge"] = (j.model_dump() if j else {"error": "no judgement"}) | meta
     verdict = (report.get("judge") or {}).get("verdict")
     if not deterministic_pass or verdict == "reject":

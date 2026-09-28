@@ -359,6 +359,40 @@ def advise_need(need_id: str, config: str = Query("C", pattern="^[ABC]$"), qc: b
         return db.jsonable(out)
 
 
+@app.post("/advice/{advice_id}/draft")
+def draft_from_advice(advice_id: str, kind: str = Query("specialist_brief", pattern="^(specialist_brief|campaign_brief|content_brief|action_plan|social_draft)$"), qc: bool = True, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    from .draft import draft as _draft
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise HTTPException(503, "ANTHROPIC_API_KEY not configured on the API host")
+    client = anthropic.Anthropic()
+    with db.connect() as conn:
+        try:
+            res = _draft(conn, advice_id, kind, client=client)  # type: ignore[arg-type]
+        except LookupError:
+            raise HTTPException(404, "advice not found")
+        out: dict[str, Any] = {"draft_id": res.id, "kind": kind, "failure": res.failure, "latency_ms": res.latency_ms, "input_tokens": res.input_tokens, "output_tokens": res.output_tokens}
+        if res.output is not None and qc:
+            out["qc"] = _run_qc(conn, res.id, client=client)
+        return db.jsonable(out)
+
+
+@app.post("/advice/{source_id}/localise")
+def localise_output(source_id: str, lang: str = Query(..., pattern="^(nl|fr|en)$"), market: str | None = None, qc: bool = True, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    from .draft import localise as _localise
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise HTTPException(503, "ANTHROPIC_API_KEY not configured on the API host")
+    client = anthropic.Anthropic()
+    with db.connect() as conn:
+        try:
+            res = _localise(conn, source_id, lang, market, client=client)  # type: ignore[arg-type]
+        except LookupError:
+            raise HTTPException(404, "source not found")
+        out: dict[str, Any] = {"localisation_id": res.id, "language": lang, "failure": res.failure, "latency_ms": res.latency_ms, "input_tokens": res.input_tokens, "output_tokens": res.output_tokens}
+        if res.output is not None and qc:
+            out["qc"] = _run_qc(conn, res.id, client=client)
+        return db.jsonable(out)
+
+
 @app.get("/needs/{need_id}/advice")
 def list_advice(need_id: str, user: dict[str, Any] = Depends(current_user)) -> list[dict[str, Any]]:
     with db.connect() as conn:
