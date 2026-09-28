@@ -21,6 +21,13 @@ CORS is open (demo). JSON everywhere. IDs are UUID strings. `dataset` is `synthe
 | GET | `/tasks?dataset=real&status=open` | routed tasks with property and assignee |
 | POST | `/needs/{id}/match` | run the engine: returns the run outcome (decision, top consultant, score, language, task, tokens) |
 | POST | `/needs/{id}/reset` | remove the engine's outputs for the need so it can be re-run |
+| GET | `/intel/status` | intelligence collectors: configured on this host, what each needs, last run |
+| POST | `/intel/collect?org_id=&source=` | run the configured collectors for an organisation (writer) |
+| GET | `/organizations/{id}/intel` | per property: reviews, rate and rank snapshots, AI-assistant answers, local events |
+| GET | `/properties/{id}/intel` | the same for one property |
+| POST | `/properties/{id}/reviews/draft` | Claude drafts a reply for a review text, grounded in the hotel profile (writer) |
+| POST | `/reviews/{id}/draft` | draft (or redraft) the reply of a stored review and keep it on the row (writer) |
+| POST | `/reviews/{id}/reply` | a person approves the reply; posted only through a configured connector (writer) |
 
 ## Shapes
 
@@ -57,3 +64,20 @@ Errors: 404 unknown need; 503 no model key on the API host; 502 workflow sink un
 The API binds to 127.0.0.1. A locally served frontend (Lovable export, `npm run dev`) can call it directly.
 A frontend hosted elsewhere (Lovable preview) needs a public URL: `cloudflared tunnel --url http://localhost:8765`
 (or ngrok) gives an HTTPS address; put it in the frontend as the API base URL.
+
+## Intelligence sources (migration 006)
+
+Collectors live in `engine/intel.py`. Each runs only when its configuration is present in
+`~/.hautel/engine.env` on the API host:
+
+| Source | Needs |
+|---|---|
+| Google reviews and replies | `HAUTEL_GOOGLE_BUSINESS_TOKEN` (Business Profile API, `business.manage` scope) and per hotel `properties.branding.google_location` = `accounts/{a}/locations/{l}` |
+| Rates and parity | `HAUTEL_RATE_API_URL` (template with `{property_id}` and `{days}`) and `HAUTEL_RATE_API_KEY`; JSON `[{"date","channel","competitor"|null,"rate"}]` |
+| OTA search rank | `HAUTEL_RANK_API_URL` (template with `{property_id}`, `{city}`) and `HAUTEL_RANK_API_KEY`; JSON `[{"site","query","rank","page"}]` |
+| AI-assistant visibility | `ANTHROPIC_API_KEY` (Claude, already present), `OPENAI_API_KEY` (ChatGPT), `GOOGLE_AI_API_KEY` (Gemini) |
+| Local events | `PREDICTHQ_TOKEN`, optional `HAUTEL_EVENTS_DAYS` (default 45) |
+
+Claude reply drafts need no extra configuration. After adding keys, restart `hautel-api` and call
+`POST /intel/collect?org_id=…` (or "Collect now" on the Settings page). Migration 006 was applied
+directly; run `scripts/deploy_supabase.sh --upgrade` once to apply the RLS lock-down to the new tables.
