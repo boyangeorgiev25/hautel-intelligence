@@ -24,7 +24,7 @@ for a in "$@"; do case "$a" in --seed) SEED=1;; --force) FORCE=1;; --upgrade) UP
 
 # marker table per migration: present => that migration has been applied
 marker_for() { case "$(basename "$1")" in
-  001_*) echo organizations;; 002_*) echo hotel_profiles;; 003_*) echo match_runs;; 004_*) echo datasets;; *) echo "";; esac; }
+  001_*) echo organizations;; 002_*) echo hotel_profiles;; 003_*) echo match_runs;; 004_*) echo datasets;; 005_*) echo wp3_marker;; *) echo "";; esac; }
 has_table() { [ "$(psql "$URL" -At -c "select count(*) from information_schema.tables where table_schema='public' and table_name='$1'")" != "0" ]; }
 
 # 1. Region check: refuse anything that is not an EU host (dossier §8, EU-resident by default)

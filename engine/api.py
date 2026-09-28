@@ -336,6 +336,73 @@ def match(need_id: str, user: dict[str, Any] = Depends(writer)) -> dict[str, Any
         return db.jsonable(out.__dict__)
 
 
+# ── WP3: advice, quality control, human validation ────────────────────────────
+from .advice import advise as _advise  # noqa: E402
+from .qc import run_qc as _run_qc  # noqa: E402
+
+
+@app.post("/needs/{need_id}/advise")
+def advise_need(need_id: str, config: str = Query("C", pattern="^[ABC]$"), qc: bool = True, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    """Generate advice for a need under one configuration (A = brief only, B = + hotel context, C = + WP2 match), then run QC on it."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise HTTPException(503, "ANTHROPIC_API_KEY not configured on the API host")
+    client = anthropic.Anthropic()
+    with db.connect() as conn:
+        try:
+            res = _advise(conn, need_id, config, client=client)  # type: ignore[arg-type]
+        except LookupError:
+            raise HTTPException(404, "need not found")
+        out: dict[str, Any] = {"advice_id": res.advice_id, "config": config, "failure": res.failure,
+                               "latency_ms": res.latency_ms, "input_tokens": res.input_tokens, "output_tokens": res.output_tokens}
+        if res.advice is not None and qc:
+            out["qc"] = _run_qc(conn, res.advice_id, client=client)
+        return db.jsonable(out)
+
+
+@app.get("/needs/{need_id}/advice")
+def list_advice(need_id: str, user: dict[str, Any] = Depends(current_user)) -> list[dict[str, Any]]:
+    with db.connect() as conn:
+        return _rows(conn, """
+            select a.id, a.kind, a.config, a.parent_id, a.language, a.status, a.review_note, a.reviewed_at, a.body, a.structured, a.qc,
+                   a.grounding, a.model_ref, a.latency_ms, a.input_tokens, a.output_tokens, a.created_at, u.full_name as reviewed_by_name
+              from advice a left join users u on u.id = a.reviewed_by
+             where a.need_id = %s order by a.created_at desc""", (need_id,))
+
+
+@app.post("/advice/{advice_id}/qc")
+def qc_advice(advice_id: str, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise HTTPException(503, "ANTHROPIC_API_KEY not configured on the API host")
+    with db.connect() as conn:
+        try:
+            return db.jsonable(_run_qc(conn, advice_id, client=anthropic.Anthropic()))
+        except LookupError:
+            raise HTTPException(404, "advice not found")
+
+
+class Review(BaseModel):
+    status: str = Field(pattern="^(accepted|edited|rejected|draft)$")
+    review_note: str | None = None
+    body: str | None = Field(default=None, description="Edited text when status is 'edited'.")
+
+
+@app.patch("/advice/{advice_id}")
+def review_advice(advice_id: str, body: Review, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    """The human validation gate: accept, edit (with the edited text) or reject, with a reason."""
+    with db.connect() as conn:
+        with conn.transaction():
+            row = conn.execute(
+                """update advice set status = %s, review_note = %s, body = coalesce(%s, body),
+                          reviewed_by = (select id from users where email = %s), reviewed_at = now()
+                    where id = %s returning id, status, reviewed_at""",
+                (body.status, body.review_note, body.body if body.status == "edited" else None, user.get("email"), advice_id)).fetchone()
+            if not row:
+                raise HTTPException(404, "advice not found")
+            conn.execute("insert into evaluations (subject_kind, subject_id, metric, score, evaluator, notes) values ('advice', %s, 'human_rating', %s, %s, %s)",
+                         (advice_id, {"accepted": 1.0, "edited": 0.5, "rejected": 0.0, "draft": 0.0}[body.status], f"human:{user.get('email')}", body.review_note))
+        return db.jsonable(dict(row))
+
+
 @app.post("/needs/{need_id}/reset")
 def reset(need_id: str, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
     """Remove the engine's outputs for a need so it can be re-run. Inputs are never touched."""

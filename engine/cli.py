@@ -31,6 +31,9 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("match"); s.add_argument("--need"); s.add_argument("--all", action="store_true"); s.add_argument("--dataset", choices=["synthetic", "real"], default=None, help="with --all: only needs of this dataset")
     s = sub.add_parser("show"); s.add_argument("--need", required=True)
     s = sub.add_parser("reset"); s.add_argument("--need"); s.add_argument("--all", action="store_true")
+    s = sub.add_parser("advise"); s.add_argument("--need", required=True); s.add_argument("--config", choices=["A", "B", "C"], default="C")
+    s = sub.add_parser("advice"); s.add_argument("--need", required=True)
+    s = sub.add_parser("qc"); s.add_argument("--advice", required=True); s.add_argument("--no-judge", action="store_true")
     s = sub.add_parser("test")
     s.add_argument("--cases", default=str(REPO / "tests" / "wp2_cases.yaml"))
     s.add_argument("--report", default=None)
@@ -65,6 +68,43 @@ def main(argv: list[str] | None = None) -> int:
                 out = run_need(conn, nid)
                 top = f"{out.top_consultant_name} ({out.top_score:.2f})" if out.top_consultant_id else "—"
                 print(f"{nid}  {out.decision:<9} {top:<32} lang={out.brief_language} {out.latency_ms/1000:.1f}s  task: {out.task_title}")
+        return 0
+
+    if a.cmd == "advise":
+        from .advice import advise
+        with db.connect() as conn:
+            res = advise(conn, a.need, a.config)
+            if res.advice is None:
+                print(f"{a.need}  config={a.config}  FAILED: {res.failure}"); return 1
+            ad = res.advice
+            print(f"{a.need}  config={a.config}  advice={res.advice_id}  sufficient={ad.sufficient_information}  conf={ad.confidence:.2f}  {res.latency_ms/1000:.1f}s  tokens {res.input_tokens}/{res.output_tokens}")
+            print(f"  objective: {ad.interpreted_objective}")
+            for i, r in enumerate(ad.recommendations, 1):
+                print(f"  {i}. {r.action[:110]}  [{len(r.citations)} citations]")
+            if ad.missing_information:
+                print("  missing: " + " | ".join(ad.missing_information)[:300])
+        return 0
+
+    if a.cmd == "qc":
+        from .qc import run_qc
+        with db.connect() as conn:
+            r = run_qc(conn, a.advice, with_judge=not a.no_judge)
+            cc, pc, rs = r["citation_check"], r["policy_check"], r["rule_scan"]
+            print(f"advice {a.advice}  status={r['status']}  deterministic={'pass' if r['deterministic_pass'] else 'FAIL'}")
+            print(f"  citations {cc['citations_verified']}/{cc['citations_total']} verified" + (f"; unverified: {[u['quote'][:60] for u in cc['unverified']]}" if cc['unverified'] else ""))
+            print(f"  policy {'pass' if pc['pass'] else pc['problems']}; generic recommendations: {len(pc['generic_recommendations'])}")
+            print(f"  rules: {len(rs['documents_with_rules'])} document(s) with rules, acknowledged={rs['acknowledged_in_advice']}")
+            if "judge" in r and "verdict" in r["judge"]:
+                j = r["judge"]
+                print(f"  judge: {j['verdict']}  alignment={j['objective_alignment']:.2f} consistency={j['context_consistency']:.2f} missing_info={j['missing_information_handled']:.2f} language={j['language_consistency']:.2f} actionable={j['actionability']:.2f}  unsupported={len(j['unsupported_claims'])}  corrections={len(j['corrections'])}")
+                print(f"  summary: {j['summary']}")
+                for u in j['unsupported_claims'][:4]: print(f"    unsupported: {u[:140]}")
+        return 0
+
+    if a.cmd == "advice":
+        with db.connect() as conn:
+            for r in conn.execute("select id, kind, config, status, language, model_ref, latency_ms, created_at, left(body, 200) as body from advice where need_id=%s order by created_at", (a.need,)):
+                print(dict(r))
         return 0
 
     if a.cmd == "show":
