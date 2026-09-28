@@ -120,7 +120,7 @@ def organizations(dataset: str | None = Query(None, pattern="^(synthetic|real)$"
     with db.connect() as conn:
         return _rows(conn, f"""
             select o.id, o.name, o.kind, o.dataset,
-                   coalesce((select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'region', p.region, 'segment', h.segment) order by p.name)
+                   coalesce((select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name, 'region', p.region, 'segment', h.segment, 'photo', p.branding->>'photo') order by p.name)
                                from properties p left join hotel_profiles h on h.property_id = p.id where p.org_id = o.id), '[]') as properties,
                    (select count(*) from properties p where p.org_id = o.id) as property_count,
                    (select count(*) from marketing_needs n join properties p on p.id = n.property_id where p.org_id = o.id) as need_count
