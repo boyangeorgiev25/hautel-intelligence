@@ -105,7 +105,7 @@ JUDGE_PROMPT = """You are the quality-control step of the Hautel Intelligence pl
 
 The advisor writes its advice in English by design, whatever the language of the request; localisation is a separate step. So language_consistency judges terminology, audience and market fit against the request and hotel context, not the output language.
 
-Score each criterion from 0 to 1. List every hotel-specific claim that the context does not support (numbers, competitors, past results, facilities, people). Propose concrete corrections. Verdict: accept = a human can approve with at most cosmetic edits; revise = usable after the listed corrections; reject = misreads the request or invents material facts. Be terse and specific."""
+Score each criterion from 0 to 1. List every hotel-specific claim that the context does not support (numbers, competitors, past results, facilities, people). Propose concrete corrections. Verdict rules: accept = a human can approve with at most cosmetic edits AND unsupported_claims is empty; revise = usable after the listed corrections, or any unsupported claim exists; reject = misreads the request or invents material facts. Never return accept together with a non-empty unsupported_claims list. Be terse and specific."""
 
 
 def judge(context: str, structured: dict[str, Any], client: anthropic.Anthropic | None = None, source: str | None = None, kind: str = "advice") -> tuple[QCJudgement | None, dict[str, Any]]:
@@ -147,6 +147,9 @@ def run_qc(conn: psycopg.Connection, advice_id: str, client: anthropic.Anthropic
         j, meta = judge(context, s, client=client, source=source, kind=row["kind"])
         report["judge"] = (j.model_dump() if j else {"error": "no judgement"}) | meta
     verdict = (report.get("judge") or {}).get("verdict")
+    if verdict == "accept" and (report.get("judge") or {}).get("unsupported_claims"):
+        report["judge"]["verdict"] = verdict = "revise"   # enforce the rule even if the judge slipped
+        report["judge"]["verdict_note"] = "downgraded: unsupported claims present"
     if not deterministic_pass or verdict == "reject":
         status = "flagged"
     elif verdict == "revise":

@@ -66,7 +66,8 @@ Rules:
 1. This is adaptation, not literal translation: keep the objective, audience and campaign logic; adapt formality, idiom, examples, date and price conventions to the market. Say what you changed and why in adaptations.
 2. Keep hotel names, outlet names, brand claims and campaign titles as the hotel uses them in the context; if the context shows the hotel's own term in the target language (a Dutch brief, a French UGC script), use that term. List them in glossary_applied.
 3. Do not add facts. If a passage needs a decision (formal or informal address, a claim that may not translate), list it in uncertain.
-4. Output language must be exactly the target language throughout."""
+4. Output language must be exactly the target language throughout.
+5. If the source is already in the target language, do not rewrite it: keep the text as is except for what the target market genuinely requires (currency, dates, spelling variant, address forms). Then adaptations lists only those few items, or is empty."""
 
 
 @dataclass
@@ -95,6 +96,11 @@ def _parse(client: anthropic.Anthropic, system: str, user: str, fmt: type[BaseMo
     return res
 
 
+def need_title(conn: psycopg.Connection, need_id: Any) -> str:
+    r = conn.execute("select title from marketing_needs where id = %s", (need_id,)).fetchone()
+    return r["title"] if r else str(need_id)
+
+
 def render_draft(d: Draft) -> str:
     lines = [f"# {d.title}", f"To: {d.addressed_to}", f"Kind: {d.document_kind}", ""]
     for s in d.sections:
@@ -111,6 +117,17 @@ def draft(conn: psycopg.Connection, advice_id: str, kind: DraftKind = "specialis
     src = conn.execute("select id, need_id, property_id, config, body, structured, run_id from advice where id = %s and kind = 'advice'", (advice_id,)).fetchone()
     if not src:
         raise LookupError("advice not found")
+    st = src["structured"] or {}
+    if st.get("sufficient_information") is False:
+        # The advice said the context is too thin; a draft would only dress up assumptions. Refuse, keep the questions.
+        stub = {"document_kind": kind, "title": f"Not drafted: {need_title(conn, src['need_id'])}", "addressed_to": "the hotel's marketing lead",
+                "sections": [], "assets_needed": [], "open_questions": list(st.get("missing_information") or []), "hotel_specific": False}
+        with conn.transaction():
+            row = conn.execute("""insert into advice (property_id, need_id, body, grounding, model_ref, kind, config, parent_id, language, structured, status, review_note, run_id)
+                                  values (%s,%s,%s,'[]','engine:insufficient_information_guard','draft',%s,%s,'en',%s,'flagged',%s,%s) returning id""",
+                               (src["property_id"], src["need_id"], "No draft: the advice declared insufficient information. Answer the open questions first.\n\n" + "\n".join(f"- {q}" for q in stub["open_questions"]),
+                                src["config"], advice_id, json.dumps(stub), "insufficient information in the advice; no model call", src["run_id"])).fetchone()
+        return GenResult(str(row["id"]), Draft(**stub), "engine:insufficient_information_guard", 0, 0, 0)
     need = db.load_need(conn, str(src["need_id"]))
     match = latest_match(conn, str(src["need_id"])) if src["config"] == "C" else None
     ctx = assemble_context(need, src["config"], match)

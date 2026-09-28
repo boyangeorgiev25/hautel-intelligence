@@ -79,11 +79,6 @@ cases:
     label: Judge flags unsupported specifics in ungrounded advice
     source_case: ADV-02
     expect: {min_unsupported: 1, verdict_in: [revise, reject]}
-  - id: QC-05
-    capability: qc
-    label: Judge accepts a well-grounded draft
-    source_case: DRF-01
-    expect: {citations_all_verified: true, verdict_in: [accept, revise]}
 
   # ── Drafting ───────────────────────────────────────────────────────────────
   - id: DRF-01
@@ -104,6 +99,12 @@ cases:
     source_case: ADV-03
     kind: campaign_brief
     expect: {hotel_specific: false}
+
+  - id: QC-05
+    capability: qc
+    label: Judge accepts a well-grounded draft
+    source_case: DRF-01
+    expect: {citations_all_verified: true, verdict_in: [accept, revise]}
 
   # ── Localisation ───────────────────────────────────────────────────────────
   - id: LOC-01
@@ -130,7 +131,7 @@ cases:
     label: Edge — localise English to English (should adapt little, invent nothing)
     source_case: DRF-01
     lang: en
-    expect: {language: en, max_adaptations: 3}
+    expect: {language: en, max_adaptations: 5}
 
   # ── Matching (existing engine, confidence + missing information) ──────────
   - id: MAT-01

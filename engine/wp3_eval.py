@@ -36,6 +36,20 @@ class CaseResult:
     error: str | None = None
 
 
+def _resolve_source(conn: psycopg.Connection, results: dict[str, CaseResult], case_id: str) -> CaseResult:
+    """A source case from this run, or the latest stored result of that case from an earlier run."""
+    if case_id in results and results[case_id].ref_id:
+        return results[case_id]
+    row = conn.execute("""select subject_id from evaluations where metric = 'wp3_case' and notes like %s order by created_at desc limit 1""", (case_id + " %",)).fetchone()
+    if not row:
+        raise LookupError(f"source case {case_id} has no result in this run or in the database")
+    a = conn.execute("select a.id, a.need_id, a.config, a.structured from advice a where a.id = %s", (row["subject_id"],)).fetchone()
+    if not a:
+        raise LookupError(f"stored result of {case_id} not found")
+    cr = CaseResult(case={"id": case_id, "config": a["config"]}, ok=True, ref_id=str(a["id"]), structured=a["structured"])
+    return cr
+
+
 def _ensure_vague(conn: psycopg.Connection, need_id: str) -> None:
     conn.execute("""insert into marketing_needs (id, property_id, title, description, category, urgency, status, dataset)
                     values (%s, (select id from properties where dataset='synthetic' order by name limit 1),
@@ -144,19 +158,19 @@ def run_all(cases_path: pathlib.Path, report_path: pathlib.Path, only: set[str] 
                     r.structured = raw; r.ref_id = out.run_id; r.tokens, r.latency_ms = (out.input_tokens, out.output_tokens), out.latency_ms
                     r.actual = f"decision={raw.get('decision')} conf={raw.get('confidence')} missing={len(raw.get('missing_information', []))} top={out.top_consultant_name} {out.top_score}"
                 elif cap == "draft":
-                    src = results[case["source_case"]]
+                    src = _resolve_source(conn, results, case["source_case"])
                     res = draft(conn, src.ref_id, case["kind"], client=client)
                     if res.output is None: raise RuntimeError(res.failure)
                     r.structured = res.output.model_dump(); r.ref_id = res.id; r.tokens, r.latency_ms = (res.input_tokens, res.output_tokens), res.latency_ms
                     r.actual = f"kind={r.structured['document_kind']} sections={len(r.structured['sections'])} citations={sum(len(x['citations']) for x in r.structured['sections'])} hotel_specific={r.structured['hotel_specific']} open={len(r.structured['open_questions'])}"
                 elif cap == "localise":
-                    src = results[case["source_case"]]
+                    src = _resolve_source(conn, results, case["source_case"])
                     res = localise(conn, src.ref_id, case["lang"], case.get("market"), client=client)
                     if res.output is None: raise RuntimeError(res.failure)
                     r.structured = res.output.model_dump(); r.ref_id = res.id; r.tokens, r.latency_ms = (res.input_tokens, res.output_tokens), res.latency_ms
                     r.actual = f"language={r.structured['language']} glossary={len(r.structured['glossary_applied'])} adaptations={len(r.structured['adaptations'])} uncertain={len(r.structured['uncertain'])} words={len(r.structured['body'].split())}"
                 elif cap == "qc":
-                    src = results[case["source_case"]]
+                    src = _resolve_source(conn, results, case["source_case"])
                     s = copy.deepcopy(src.structured or {})
                     if case.get("tamper") == "inject_fake_citation":
                         s["recommendations"][0]["citations"].append({"source": "hotel profile", "quote": "The hotel has 240 rooms and a rooftop pool."})
@@ -182,6 +196,7 @@ def run_all(cases_path: pathlib.Path, report_path: pathlib.Path, only: set[str] 
                                  ("match_run" if cap == "match" else "advice", r.ref_id, 1 if r.ok else 0, f"{case['id']} {case['label']}: {r.observation}"))
                     conn.commit()
             except Exception as e:  # keep going; the report shows the failure
+                conn.rollback()
                 r.ok, r.error, r.observation = False, str(e)[:300], f"error: {str(e)[:200]}"
             results[case["id"]] = r
     report_path.parent.mkdir(parents=True, exist_ok=True)
