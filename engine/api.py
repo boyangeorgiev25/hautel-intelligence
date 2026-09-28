@@ -449,6 +449,91 @@ def reset(need_id: str, user: dict[str, Any] = Depends(writer)) -> dict[str, Any
         return {"reset": need_id}
 
 
+# ── Intelligence layer (migration 006): reviews, rates, rank, AI visibility, events ────────
+from . import intel as _intel  # noqa: E402
+
+
+@app.get("/intel/status")
+def intel_status(user: dict[str, Any] = Depends(current_user)) -> list[dict[str, Any]]:
+    """Which collectors are configured on this host, what each needs, and when it last ran."""
+    with db.connect() as conn:
+        return db.jsonable(_intel.status(conn))
+
+
+@app.post("/intel/collect")
+def intel_collect(org_id: str | None = None, source: str | None = None, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    """Run the configured collectors for an organisation's properties (all sources, or one)."""
+    with db.connect() as conn:
+        return db.jsonable(_intel.collect(conn, org_id, {source} if source else None))
+
+
+@app.get("/organizations/{org_id}/intel")
+def org_intel(org_id: str, user: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
+    """Everything the intelligence pages show, per property: reviews, rates, ranks, AI answers, events."""
+    with db.connect() as conn:
+        props = _intel.load_properties(conn, org_id)
+        return db.jsonable({"sources": _intel.status(conn), "properties": {str(p["id"]): _intel.property_intel(conn, str(p["id"])) for p in props}})
+
+
+@app.get("/properties/{property_id}/intel")
+def property_intel(property_id: str, user: dict[str, Any] = Depends(current_user)) -> dict[str, Any]:
+    with db.connect() as conn:
+        return db.jsonable(_intel.property_intel(conn, property_id))
+
+
+class ReviewIn(BaseModel):
+    source: str = Field(default="other", max_length=20)
+    author: str | None = None
+    rating: float | None = Field(default=None, ge=0, le=5)
+    language: str | None = None
+    body: str = Field(min_length=2)
+
+
+@app.post("/properties/{property_id}/reviews/draft")
+def draft_for_review_text(property_id: str, body: ReviewIn, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    """Draft a reply for a review that is not (yet) stored: the model reads the hotel profile and the review text."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise HTTPException(503, "ANTHROPIC_API_KEY not configured on the API host")
+    with db.connect() as conn:
+        props = _intel.load_properties(conn, property_id=property_id)
+        if not props:
+            raise HTTPException(404, "property not found")
+        res = _intel.draft_reply(props[0], body.model_dump(), client=anthropic.Anthropic())
+    if res.failure:
+        raise HTTPException(502, res.failure)
+    return {"reply": res.draft.reply, "language": res.draft.language, "handles": res.draft.handles, "caution": res.draft.caution,
+            "model_ref": res.model_ref, "latency_ms": res.latency_ms, "input_tokens": res.input_tokens, "output_tokens": res.output_tokens}
+
+
+@app.post("/reviews/{review_id}/draft")
+def draft_stored(review_id: str, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    """Draft (or redraft) the reply for a stored review and keep it on the row."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise HTTPException(503, "ANTHROPIC_API_KEY not configured on the API host")
+    with db.connect() as conn:
+        try:
+            res = _intel.draft_stored_review(conn, review_id, client=anthropic.Anthropic())
+        except LookupError:
+            raise HTTPException(404, "review not found")
+    if res.failure:
+        raise HTTPException(502, res.failure)
+    return {"id": review_id, "reply": res.draft.reply, "caution": res.draft.caution, "model_ref": res.model_ref, "latency_ms": res.latency_ms}
+
+
+class ReplyIn(BaseModel):
+    text: str = Field(min_length=2, max_length=4000)
+
+
+@app.post("/reviews/{review_id}/reply")
+def approve_reply(review_id: str, body: ReplyIn, user: dict[str, Any] = Depends(writer)) -> dict[str, Any]:
+    """A person approves the reply. It is stored, and posted to the source only when that source's adapter is configured."""
+    with db.connect() as conn:
+        try:
+            return db.jsonable(_intel.approve_reply(conn, review_id, body.text.strip(), user.get("id")))
+        except LookupError:
+            raise HTTPException(404, "review not found")
+
+
 def main() -> int:
     _load_env_file(pathlib.Path.home() / ".hautel" / "engine.env")
     print(f"database: {_redact(db.database_url())} | auth: {'supabase' if AUTH_ON else 'OFF'} | cors: {_origins}", file=sys.stderr)
