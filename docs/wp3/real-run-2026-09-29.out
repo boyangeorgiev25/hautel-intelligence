@@ -1,0 +1,126 @@
+=== real-data WP3 run on Frankfurt, start 2026-09-29 11:03:07
+--- match e3000000-0000-0000-0000-000000000005 11:03:07
+database: postgresql://postgres.cjiytybfskrngfqceszx:***@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
+e3000000-0000-0000-0000-000000000005  match     Aaron Cimanga (0.90)             lang=en 40.7s  task: Engagement proposal: RAIBU Gent launch: main reel plus vertical snippets → Aaron Cimanga
+--- match e3000000-0000-0000-0000-000000000006 11:03:49
+database: postgresql://postgres.cjiytybfskrngfqceszx:***@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
+e3000000-0000-0000-0000-000000000006  match     Aaron Cimanga (0.85)             lang=en 47.4s  task: Engagement proposal: STAY-C corporate film and reusable content library → Aaron Cimanga
+--- advise C e3000000-0000-0000-0000-000000000001 11:04:37
+  1. Submit as a composite team with one named account lead and named specialists per channel, all contracted under  [2 citations]
+  2. Accept the IP clause in writing and secure back-to-back IP and source-file assignment from every subcontracted  [2 citations]
+  3. Ask OHG whether Spanish is mandatory and, if so, name a native ES social copywriter/community manager in the t  [2 citations]
+  4. Anchor the photoshoot scope on the existing Hautel quarterly content format and price it transparently per pro  [3 citations]
+  5. Include a mock monthly Looker Studio report covering organic, paid, Google Ads, Google Business, LinkedIn, web  [2 citations]
+  missing: Is a Spanish-speaking resource mandatory or optional? | Monthly retainer envelope and hours per property (band is only '15k+') | Which OHG properties beyond Sapphire House are in scope? | Will OHG accept subcontracted paid media/Google Ads partners under full IP transfer? | Per-hotel paid media budg
+--- advise C e3000000-0000-0000-0000-000000000003 11:05:20
+  1. Book Anton Verheyden as lead stills photographer and Aaron Cimanga as on-set art director and staff coach for   [3 citations]
+  2. Reconcile the schedule and deadline with Pandox in writing before contracting: one day across five properties   [3 citations]
+  3. Commission a paid half-day grading test: three Grand Place frames graded to the AR 2025 look, approved before   [2 citations]
+  4. Make the invisible technical story human: pair BMS/Sensorea, Climato and solar panels with the engineer, not w  [3 citations]
+  5. Negotiate a secondary-use clause so Grand Place can reuse selected frames on LinkedIn and OTA listings after A  [2 citations]
+  missing: Budget band and consultant day rates (none recorded for any candidate). | Final shoot date: one intensive day vs the masterfile's 23-24 September two-day plan. | Which deadline governs: 7 working days after selection or 5 selects/15 finals. | Guest-privacy rules for shooting lobby, bar and meeting r
+--- advise C e3000000-0000-0000-0000-000000000008 11:05:55
+  1. Appoint Aaron Cimanga as director/DP and pair him with Boyan Georgiev for the 1910-matching drone facade shot   [3 citations]
+  2. Cut the 30-second capsule as a planner-first asset: ballroom, breakout rooms, Pagoda and bowl-concept catering  [3 citations]
+  3. Lock the grade to warm golden highlights, rich dark shadows and 10-15% reduced saturation before editing start  [3 citations]
+  4. Deliver 9:16 versions of the capsule and 3-4 silent teaser cutdowns for Instagram and lobby screens from the s  [2 citations]
+  5. Seed the film with a LinkedIn launch from the GM and sales managers, plus a website MICE landing page hosting   [2 citations]
+  missing: Post-production budget and owner (not in the 2,000 EUR firm production budget) | Brussels drone authorisation lead time and who files it | Confirmed shoot date and space access windows (F&B limitations) | Media/paid budget for LinkedIn and YouTube distribution after delivery | Signed employee image 
+--- advise C e3000000-0000-0000-0000-000000000005 11:06:24
+  1. Split the assignment: Aaron Cimanga leads concept, shoot and edit; The Timechamber delivers colour grade and s  [3 citations]
+  2. Lock a shotlist that shoots each guest-journey beat as one long scene, framed safe for both 16:9 and 9:16 vers  [2 citations]
+  3. Brief the crew to bank ample b-roll and detail shots as a reusable RAIBU Gent library, not only reel material.  [2 citations]
+  4. Sequence the rollout: vertical snippets as pre-opening teasers, main reel as launch anchor, best performers in  [2 citations]
+  5. Run a short pre-shoot look test on the VHS-texture-plus-digital grade and sign it off before the production da  [2 citations]
+  missing: Launch/opening date and campaign start for the rollout calendar | Budget band, plus deliverable counts and usage rights (held in the separate quotation) | Exact number and formats of vertical snippets needed per channel (IG, TikTok, Meta ads, OTA) | Whether OTA listings need stills/photo as well as 
+--- advise C e3000000-0000-0000-0000-000000000006 11:07:00
+  1. Appoint Aaron Cimanga as creative lead and pair him with Lize Rubens for bulk photography and Dutch on-set sup  [4 citations]
+  2. Lock the narrative flow before the shoot day and cast one speaker per strand: management, properties, organisa  [3 citations]
+  3. Cut one hero film plus four derivatives: investor version, partner/owner version, recruitment version and vert  [2 citations]
+  4. Tag every library clip and photo by brand, strand and usage right, and keep the corporate look separated from   [2 citations]
+  5. Film management soundbites in both Dutch and English so recruitment and Belgian partners get NL, investors get  [2 citations]
+  missing: Budget band and approved deliverable counts and usage rights (currently 'separate quotation') | Shoot dates and which locations beyond HQ Gent and Italielei 183 are accessible | Which management/staff appear on camera and in which language they speak | Whether all six brands have film-ready building
+--- qc 5330560a-1db3-4174-807a-aca4412c23ca 11:07:35
+  policy pass; generic recommendations: 0
+  rules: 1 document(s) with rules, acknowledged=True
+  judge: revise  alignment=0.85 consistency=0.80 missing_info=0.80 language=0.85 actionable=0.90  unsupported=2  corrections=5
+  summary: Well-structured, well-cited tender advice that correctly reads the composite-team, IP-clause and Spanish-language blockers and is immediately actionable. Needs revision for two overstated claims (tender 'scoring', in-house Looker Studio reporting), the sufficient_information=true flag that contradicts the escalate decision, and irrelevant guest-facing channel tags.
+    unsupported: 'The tender scores account structure' — the OHG tender document requires a proposed account team and retainer hours in the proposal but nowh
+    unsupported: Implied in-house Looker Studio reporting capability ('mock monthly Looker Studio report') — Looker Studio is recorded only as a capability o
+--- qc 2992480f-3976-4654-9c10-21da449b0971 11:08:04
+  rules: 1 document(s) with rules, acknowledged=True
+  judge: revise  alignment=0.90 consistency=0.87 missing_info=0.95 language=0.90 actionable=0.90  unsupported=3  corrections=4
+  summary: Strong, well-cited advice: it correctly centres the Grand Place scope within the five-property shoot, surfaces the one-day vs two-day and 7-day vs 5/15-day conflicts, and proposes a workable Anton-lead / Aaron-art-direct split with concrete pre-shoot de-risking (grading test, releases, call sheet). Three small invented details - a chief engineer, roof-mounted solar panels and the cost-free reuse assumption under an IP transfer that goes to Pandox, not the hotel - need correction before approval.
+    unsupported: Next action assigned to a 'Chief engineer' at Hilton Brussels Grand Place - no such role or named staff is recorded in the hotel profile or 
+    unsupported: 'roof solar panels' - the documents list 'solar panels' as a theme but never state they are roof-mounted or accessible for a shoot.
+    unsupported: 'A full IP transfer is already required, so extending internal reuse costs nothing extra' - no document supports that the IP transfers to or
+--- qc 58e7938d-7e9c-44e5-861a-c711c8800d80 11:08:34
+  judge: revise  alignment=0.85 consistency=0.65 missing_info=0.80 language=0.90 actionable=0.85  unsupported=4  corrections=6
+  summary: Sound overall plan (Aaron as director/DP + Boyan for the drone shot, Pandox grade lock, planner-first capsule) and genuinely actionable next week, but the capsule recommendation re-scopes the four locations fixed in the creative strategy and adds cost-free delivery and spokesperson claims the documents do not support. Fix the capsule scope, soften the cost and GM assertions, and reassign drone-permit ownership, then it is approvable.
+    unsupported: Capsule content defined as 'ballroom, breakout rooms, Pagoda and bowl-concept catering' - the creative strategy specifies the single 30 s ca
+    unsupported: 'vertical and screen-safe variants cost nothing extra' - post-production is explicitly outside the firm 2,000 EUR and no post budget is docu
+    unsupported: 'LinkedIn launch from the GM and sales managers' - no GM or named sales spokesperson is documented; the briefing only mentions events and sa
+    unsupported: 'email' listed as a distribution channel - not among the hotel's stated channels (website, youtube, linkedin, instagram, corporate_screens).
+--- qc 06e13c7c-d740-421f-9940-629ef615f436 11:09:04
+  rules: 0 document(s) with rules, acknowledged=True
+  judge: revise  alignment=0.95 consistency=0.85 missing_info=0.90 language=0.90 actionable=0.90  unsupported=3  corrections=4
+  summary: The advice reads the brief correctly - split Aaron (concept/shoot/edit) plus The Timechamber (grade/sound), long scenes framed for 16:9 and 9:16, library-building on a single day - and is well cited to the brief, profile and match. Three small overreaches (quotation 'unsigned', crew-wide fr/en languages, 'website' channel) need trimming before approval; everything else is actionable next week.
+    unsupported: 'Pricing, deliverable counts and usage rights sit in a separate quotation, still unsigned' - the briefing states they sit in a separate quot
+    unsupported: 'Crew languages are fr/en only' - the match records fr/en only for Aaron Cimanga; no language data exists for The Timechamber or Lize Rubens
+    unsupported: Channel 'website' in the b-roll/library recommendation - the hotel profile lists only instagram, tiktok, meta_ads and ota.
+--- qc f23de663-2cd1-4795-b35b-31d716f63bb2 11:09:23
+  policy pass; generic recommendations: 0
+  rules: 0 document(s) with rules, acknowledged=True
+  judge: revise  alignment=0.90 consistency=0.75 missing_info=0.85 language=0.80 actionable=0.85  unsupported=2  corrections=5
+  summary: The advice reads the brief correctly (three strands in balance, one production day, derivative cuts, strict separation from the RAIBU brown world) and is well cited and immediately actionable. It must be revised for one factual error — claiming no candidate covers grading and sound when The Timechamber quotes both — plus an off-profile 'OTA listing' channel and a missing rationale for not using The Timechamber.
+    unsupported: "Hautel post lead: name who owns grading and sound, as no candidate covers both" — The Timechamber's record explicitly lists colour grading 
+    unsupported: Channel "OTA listing" for the library tagging recommendation — not a channel in the hotel profile (linkedin, website, sales_decks) and irrel
+--- draft specialist_brief from 85ccc977-ecc3-4560-aa4c-a1a21360acf8 11:09:45
+  ## 2. Deliverables and specifications  [4 citations]
+  ## 3. Creative direction and shoot flow  [4 citations]
+  ## 4. Casting, consent and discretion (hard constraints)  [4 citations]
+  ## 5. Rights, delivery and confirmations required  [4 citations]
+  open: Confirmed shoot date plus a weather fallback date, and drone clearance for Bourscheid-Plage. | Who is the contracted editor and retoucher, and do they commit to the 5 working days? | Budget band: no day rates are recorded, so crew and post scope cannot be sized. | Are the ambassador couple and the o
+--- draft specialist_brief from 70c9ce07-7298-4246-8ac1-37fe46479171 11:10:25
+  ## 3. Deliverables and channel-weighted shotlist  [3 citations]
+  ## 4. Contractual conditions to settle before shoot day one  [3 citations]
+  ## 5. Approvals, delivery SLA and onboarding  [3 citations]
+  ## 6. Timing and the OHG tender  [2 citations]
+  open: Which format is bought: Essential 1,550, Editorial 2,200 or 2,750 EUR/quarter — and is Sapphire Patio inside the same shoot day? | Day-rate bands and 12-month availability, incl. holiday cover, for Anton, Lize and Aaron. | Who at OHG owns multi-hotel stakeholder sign-off, and expected turnaround per
+--- draft specialist_brief from d2f20e50-a484-43d5-8e08-a75fa5017b2c 11:11:03
+  ## 2. Technical continuity — do this before booking the shoot  [3 citations]
+  ## 3. Speakers, casting and consent  [5 citations]
+  ## 4. Shoot plan  [2 citations]
+  ## 5. Deliverables, revisions and approvals  [4 citations]
+  open: Who is the second (leadership) speaker and when are they available? | Can group comms supply source files: codec, LUT/grade reference, project timeline? | Which property is locked — The Hotel or Hilton Grand Place — and on which date? | Who is the single named approver for the two revision rounds? |
+--- draft specialist_brief from 5330560a-1db3-4174-807a-aca4412c23ca 11:11:33
+  ## 3. Team chart you must name  [2 citations]
+  ## 4. Non-negotiable constraints  [3 citations]
+  ## 5. Proposal deliverables  [3 citations]
+  ## 6. Timing and immediate actions  [3 citations]
+  open: Is a Spanish-speaking resource mandatory or optional? | What is the monthly retainer envelope and hours per property (band is only '15k+')? | Which OHG properties beyond Sapphire House Antwerp are in scope? | Will OHG accept subcontracted paid media/Google Ads partners under full IP transfer? | What
+--- draft specialist_brief from 2992480f-3976-4654-9c10-21da449b0971 11:12:13
+  ## 3. Visual grammar (non-negotiable)  [3 citations]
+  ## 4. Deliverables, technical and rights  [3 citations]
+  ## 5. Schedule conflict - do not book until resolved  [4 citations]
+  ## 6. Inputs you will receive  [2 citations]
+  open: One intensive day or the masterfile's two-day 23-24 September plan? | Which deadline governs: 7 working days after selection, or 5 selects / 15 finals? | Budget band and your day rates - none are recorded; please quote. | Guest-privacy rules for shooting lobby, bar and meeting rooms during service. 
+--- draft specialist_brief from 58e7938d-7e9c-44e5-861a-c711c8800d80 11:12:52
+  ## Creative register and grade (non-negotiable)  [4 citations]
+  ## Budget, crew and constraints  [3 citations]
+  ## Timing and next actions  [3 citations]
+  ## Distribution the cuts must serve  [2 citations]
+  open: Post-production budget and owner - not covered by the 2,000 EUR firm production budget? | Brussels drone authorisation lead time and who files it? | Confirmed shoot date and space access windows, given F&B limitations? | Media/paid budget for LinkedIn and YouTube after delivery? | Are employee image
+--- draft specialist_brief from 06e13c7c-d740-421f-9940-629ef615f436 11:13:28
+  ## Shotlist requirements  [4 citations]
+  ## Pre-shoot look test  [2 citations]
+  ## Constraints and rules  [3 citations]
+  ## Rollout the edit must serve  [2 citations]
+  open: Launch/opening date and campaign start for the rollout calendar? | Budget band, deliverable counts and usage rights — when is the quotation signed? | How many vertical snippets per channel (IG, TikTok, Meta ads, OTA), in which formats? | Do OTA listings need stills/bulk photo from this day as well a
+--- draft specialist_brief from f23de663-2cd1-4795-b35b-31d716f63bb2 11:14:02
+  ## Narrative scope — three strands in balance  [3 citations]
+  ## Deliverables  [3 citations]
+  ## Constraints and rules  [4 citations]
+  ## Process and timing  [2 citations]
+  open: Shoot dates, and which locations beyond HQ Gent and Italielei 183 are accessible? | Which management and staff appear on camera, and in which language? | Do all six brands have film-ready buildings, or only RAIBU and A-STAY? | Approved deliverable counts and usage rights — when does the quotation la
+=== done 2026-09-29 11:14:33
